@@ -1,0 +1,259 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Movie Review Sentiment Analyzer</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+
+        :root {
+            --primary: #6a11cb;
+            --primary-light: #8a2be2;
+            --secondary: #2575fc;
+            --dark: #1a1a2e;
+            --light: #f8f9fa;
+            --positive: #4CAF50;
+            --negative: #F44336;
+            --neutral: #FFC107;
+        }
+
+        body {
+            background: linear-gradient(135deg, var(--dark) 0%, #16213e 100%);
+            color: var(--light);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        header {
+            text-align: center;
+            margin-bottom: 40px;
+            padding: 30px;
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 20px;
+            backdrop-filter: blur(10px);
+        }
+
+        header h1 {
+            font-size: 3rem;
+            margin-bottom: 10px;
+            background: linear-gradient(45deg, var(--primary-light), var(--secondary));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .card {
+            background: rgba(255, 255, 255, 0.05);
+            backdrop-filter: blur(10px);
+            border-radius: 15px;
+            padding: 25px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            margin-bottom: 20px;
+        }
+
+        textarea {
+            width: 100%;
+            height: 150px;
+            padding: 15px;
+            border: 2px solid rgba(255, 255, 255, 0.1);
+            border-radius: 10px;
+            background: rgba(255, 255, 255, 0.08);
+            color: var(--light);
+            font-size: 1rem;
+            resize: vertical;
+            margin-bottom: 15px;
+        }
+
+        .btn {
+            background: linear-gradient(45deg, var(--primary), var(--secondary));
+            color: white;
+            border: none;
+            padding: 15px 30px;
+            border-radius: 50px;
+            font-size: 1.1rem;
+            cursor: pointer;
+            transition: all 0.3s;
+            width: 100%;
+        }
+
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(106, 17, 203, 0.4);
+        }
+
+        .sentiment-result {
+            text-align: center;
+        }
+
+        .sentiment-icon {
+            font-size: 4rem;
+            margin-bottom: 15px;
+        }
+
+        .score-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 15px;
+            margin-top: 20px;
+        }
+
+        .score-item {
+            background: rgba(255, 255, 255, 0.08);
+            padding: 15px;
+            border-radius: 10px;
+            text-align: center;
+        }
+
+        .score-value {
+            font-size: 1.8rem;
+            font-weight: bold;
+        }
+
+        .positive { color: var(--positive); }
+        .negative { color: var(--negative); }
+        .neutral { color: var(--neutral); }
+
+        .keyword-list {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            margin-top: 10px;
+        }
+
+        .keyword {
+            background: rgba(255, 255, 255, 0.1);
+            padding: 5px 12px;
+            border-radius: 20px;
+            font-size: 0.9rem;
+        }
+
+        .positive-keyword { border-left: 4px solid var(--positive); }
+        .negative-keyword { border-left: 4px solid var(--negative); }
+
+        .insights-list {
+            list-style: none;
+        }
+
+        .insights-list li {
+            padding: 10px;
+            margin-bottom: 8px;
+            background: rgba(255, 255, 255, 0.08);
+            border-radius: 8px;
+            border-left: 4px solid var(--primary-light);
+        }
+
+        @media (max-width: 768px) {
+            .score-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1><i class="fas fa-film"></i> Movie Review Analyzer</h1>
+            <p>Advanced sentiment analysis for movie reviews</p>
+        </header>
+
+        <div class="card">
+            <h2><i class="fas fa-pen-alt"></i> Enter Your Movie Review</h2>
+            <form method="POST">
+                <textarea name="review" placeholder="Write your movie review here..." required>{{ request.form.review if request.form.review }}</textarea>
+                <button type="submit" class="btn">
+                    <i class="fas fa-search"></i> Analyze Review
+                </button>
+            </form>
+        </div>
+
+        {% if sentiment %}
+        <div class="card sentiment-result">
+            <div class="sentiment-icon">
+                {% if 'Positive' in sentiment %}😊
+                {% elif 'Negative' in sentiment %}😠
+                {% else %}😐{% endif %}
+            </div>
+            <h2 class="{{ 'positive' if 'Positive' in sentiment else 'negative' if 'Negative' in sentiment else 'neutral' }}">
+                {{ sentiment }}
+            </h2>
+            {% if detailed_analysis %}
+            <p><strong>{{ detailed_analysis.strength }}</strong></p>
+            {% endif %}
+            
+            {% if scores %}
+            <div class="score-grid">
+                <div class="score-item">
+                    <div>Positive</div>
+                    <div class="score-value positive">{{ "%.1f"|format(scores.pos * 100) }}%</div>
+                </div>
+                <div class="score-item">
+                    <div>Negative</div>
+                    <div class="score-value negative">{{ "%.1f"|format(scores.neg * 100) }}%</div>
+                </div>
+                <div class="score-item">
+                    <div>Neutral</div>
+                    <div class="score-value neutral">{{ "%.1f"|format(scores.neu * 100) }}%</div>
+                </div>
+                <div class="score-item">
+                    <div>Compound</div>
+                    <div class="score-value">{{ "%.4f"|format(scores.compound) }}</div>
+                </div>
+            </div>
+            {% endif %}
+        </div>
+
+        {% if keywords and (keywords.positive_words or keywords.negative_words) %}
+        <div class="card">
+            <h2><i class="fas fa-key"></i> Keyword Analysis</h2>
+            
+            {% if keywords.positive_words %}
+            <div style="margin-bottom: 20px;">
+                <h3>Positive Words</h3>
+                <div class="keyword-list">
+                    {% for word, count in keywords.positive_words.items() %}
+                    <div class="keyword positive-keyword">{{ word }} ({{ count }})</div>
+                    {% endfor %}
+                </div>
+            </div>
+            {% endif %}
+            
+            {% if keywords.negative_words %}
+            <div>
+                <h3>Negative Words</h3>
+                <div class="keyword-list">
+                    {% for word, count in keywords.negative_words.items() %}
+                    <div class="keyword negative-keyword">{{ word }} ({{ count }})</div>
+                    {% endfor %}
+                </div>
+            </div>
+            {% endif %}
+        </div>
+        {% endif %}
+
+        {% if detailed_analysis %}
+        <div class="card">
+            <h2><i class="fas fa-chart-bar"></i> Detailed Insights</h2>
+            <ul class="insights-list">
+                {% for insight in detailed_analysis.insights %}
+                <li>{{ insight }}</li>
+                {% endfor %}
+            </ul>
+        </div>
+        {% endif %}
+        {% endif %}
+        <script src="{{ url_for('static', filename='js/script.js') }}"></script>
+    </div>
+</body>
+</html>
