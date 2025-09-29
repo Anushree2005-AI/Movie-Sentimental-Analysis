@@ -24,5 +24,5 @@ Installation
 
 1. Clone the repository
    ```bash
-   git clone https://github.com/Anushree2005-AI/movie-sentiment-analyzer.git
+   git clone https://github.com/Anushree2005-AI/Movie-Sentiment-Analyzer.git
    cd movie-sentiment-analyzer
